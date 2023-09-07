@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+myenv/
+db.sqlite3
+*.env
+*.pyc
+.vscode/
+.idea/
+*.code-workspace
+.vscode/settings.json
+main/migrations/

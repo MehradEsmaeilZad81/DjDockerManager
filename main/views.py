@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from .models import App
-from .serializers import AppSerializer
+from .serializers import AppCreateSerializer, AppUpdateSerializer
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -12,11 +12,11 @@ from rest_framework.response import Response
 class AppsAPIView(APIView):
     def get(self, request):
         apps = App.objects.all()
-        serializer = AppSerializer(apps, many=True)
+        serializer = AppCreateSerializer(apps, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = AppSerializer(data=request.data)
+        serializer = AppCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         name = serializer.validated_data['name']
@@ -30,7 +30,7 @@ class AppsAPIView(APIView):
         if not App.objects.filter(id=pk).exists():
             return Response({'message': 'App not found'}, status=status.HTTP_404_NOT_FOUND)
         app = App.objects.filter(id=pk).first()
-        serializer = AppSerializer(app, data=request.data)
+        serializer = AppUpdateSerializer(app, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         if 'name' in serializer.validated_data:

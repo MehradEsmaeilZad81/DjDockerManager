@@ -1,11 +1,14 @@
 from rest_framework import serializers
 from .models import App
+import json
 
 
-class AppSerializer(serializers.ModelSerializer):
+class AppCreateSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
+
     class Meta:
         model = App
-        fields = '__all__'
+        fields = ['id', 'name', 'image', 'envs', 'command']
 
     def validate(self, data):
         if data['name'] == '' or data['image'] == '':
@@ -17,15 +20,28 @@ class AppSerializer(serializers.ModelSerializer):
     def validate_envs(self, value):
         if isinstance(value, dict):
             return value
+        else:
+            raise serializers.ValidationError(
+                "envs must be a JSON object (dictionary).")
 
-        try:
-            # Attempt to parse 'envs' as JSON
-            parsed_data = json.loads(value)
-            if not isinstance(parsed_data, dict):
-                raise serializers.ValidationError(
-                    "envs must be a JSON object (dictionary).")
 
-        except JSONDecodeError:
-            raise serializers.ValidationError("Invalid JSON format for envs.")
+class AppUpdateSerializer(serializers.Serializer):
+    id = serializers.ReadOnlyField()
+    name = serializers.CharField(max_length=255, required=False)
+    image = serializers.CharField(max_length=255, required=False)
+    envs = serializers.JSONField(required=False)
+    command = serializers.CharField(max_length=255, required=False)
 
-        return parsed_data
+    def update(self, instance, validated_data):
+        # Update the fields specified in validated_data
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    def validate_envs(self, value):
+        if isinstance(value, dict):
+            return value
+        else:
+            raise serializers.ValidationError(
+                "envs must be a JSON object (dictionary).")

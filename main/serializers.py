@@ -1,11 +1,8 @@
 from rest_framework import serializers
-from .models import App
-import json
+from .models import App, Run
 
 
 class AppCreateSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
-
     class Meta:
         model = App
         fields = ['id', 'name', 'image', 'envs', 'command']
@@ -45,3 +42,16 @@ class AppUpdateSerializer(serializers.Serializer):
         else:
             raise serializers.ValidationError(
                 "envs must be a JSON object (dictionary).")
+
+
+class RunSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Run
+        fields = ['id', 'app', 'start_time', 'status', 'parameters']
+
+    def validate_parameters(self, value):
+        if isinstance(value, dict):
+            return value
+        else:
+            raise serializers.ValidationError(
+                "parameters must be a JSON object (dictionary).")

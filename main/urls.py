@@ -1,8 +1,16 @@
 from django.urls import path, include
-from .views import AppsAPIView, RunsAPIView
+from rest_framework.routers import DefaultRouter
+from .views import AppViewSet, RunViewSet
+
+router = DefaultRouter()
+router.register(r'apps', AppViewSet)
+
+# Define a nested router for runs under apps
+runs_router = DefaultRouter()
+runs_router.register(r'run', RunViewSet, basename='run')
 
 urlpatterns = [
-    path('apps/', AppsAPIView.as_view(), name='app-list'),
-    path('apps/<int:pk>/', AppsAPIView.as_view(), name='app-detail'),
-    path('apps/<int:pk>/run/', RunsAPIView.as_view()),
+    path('', include(router.urls)),
+    # Nested runs route under apps
+    path('apps/<int:app_id>/', include(runs_router.urls)),
 ]

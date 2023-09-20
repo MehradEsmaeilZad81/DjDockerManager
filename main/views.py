@@ -3,8 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import App, Run
 from .serializers import AppCreateSerializer, AppUpdateSerializer, RunSerializer
+from rest_framework.decorators import action
 from django.http import Http404
 import subprocess
+import docker
 
 
 class AppViewSet(viewsets.ModelViewSet):
@@ -50,26 +52,29 @@ class RunViewSet(viewsets.ModelViewSet):
         run = Run.objects.create(
             app=app, parameters=app_data, status="Running")
 
-        docker_command = [
-            'docker', 'run',
-            *[f'-e {key}={value}' for key, value in app.envs.items()],
-            '-l', 'l1=v1',
-            app.image,
-            app.command
-        ]
+        docker_client = docker.from_env()
 
+        # Create a Docker container based on app configuration
+        container = docker_client.containers.run(
+            image=app.image,
+            command=app.command,
+            environment=app.envs,
+            labels={'l1': 'v1'},
+            detach=True  # Run in the background
+        )
+
+        # Update run status based on container execution result
         try:
-            result = subprocess.run(
-                docker_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if result.returncode == 0:
-                run.status = "Finished"
-                run.save()
-                return Response({'message': 'Container started and finished successfully.'}, status=status.HTTP_200_OK)
-            else:
-                error_message = result.stderr.decode()
-                run.status = "Finished"
-                run.save()
-                return Response({'message': f'Error starting container: {error_message}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Adjust timeout as needed
+            container.wait(timeout=app.execution_timeout)
+            run.status = "Finished"
+            run.save()
+            return Response({'message': 'Container started and finished successfully.'}, status=status.HTTP_200_OK)
+        except docker.errors.ContainerError as e:
+            error_message = str(e)
+            run.status = "Finished"
+            run.save()
+            return Response({'message': f'Error starting container: {error_message}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             run.status = "Finished"
             run.save()
